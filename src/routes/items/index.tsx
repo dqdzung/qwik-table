@@ -176,10 +176,12 @@ export default component$(() => {
       </table>
 
       <ItemModal />
-      <ConfirmModal
-        modalId={DELETE_CONFIRM_MODAL_ID}
-        handleConfirm={handleDelete}
-      />
+      {deleteId.value > 0 && (
+        <ConfirmModal
+          modalId={DELETE_CONFIRM_MODAL_ID}
+          handleConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 });
