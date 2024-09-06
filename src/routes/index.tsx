@@ -7,18 +7,11 @@ import {
   useVisibleTask$,
 } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
-import dayjs from "dayjs";
 import Card from "~/components/card";
 import LoadingIndicator from "~/components/loadingIndicator";
 import { supabase } from "~/lib/db";
-
-export type Table = {
-  id: number;
-  code: number;
-  date: string;
-};
-
-const TODAY = dayjs();
+import { TODAY } from "~/lib/helper";
+import type { Table } from "~/types/table";
 
 const fetchTables = async (loading?: Signal<boolean>) => {
   if (loading) {
@@ -60,6 +53,7 @@ export default component$(() => {
     tables.value = res;
   });
 
+  // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ cleanup }) => {
     const channel = supabase
       .channel("table")

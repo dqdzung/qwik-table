@@ -47,26 +47,21 @@ export default component$(() => {
           id="navbar-sticky"
         >
           <ul class="mt-4 flex flex-col rounded-lg border border-gray-100 bg-gray-50 p-4 font-medium rtl:space-x-reverse dark:border-gray-700 dark:bg-gray-800 md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-white md:p-0 md:dark:bg-gray-900">
-            <li>
-              <a
-                href="/records"
-                class={`md:bg-transparent ${getActiveStyle("home") ? "bg-blue-700" : ""} block rounded px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500`}
-              >
-                Records
-              </a>
-            </li>
-
-            <li>
-              <a
-                href="/about"
-                class={`md:bg-transparent ${getActiveStyle("about") ? "bg-blue-700" : ""} block rounded px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500`}
-              >
-                About
-              </a>
-            </li>
+            {navItems.map((item) => (
+              <li key={item}>
+                <a
+                  href={`/${item}`}
+                  class={`capitalize md:bg-transparent ${getActiveStyle(item) ? "bg-blue-700" : ""} block rounded px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 dark:hover:text-white md:border-0 md:p-0 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:bg-transparent md:dark:hover:text-blue-500`}
+                >
+                  {item}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
     </nav>
   );
 });
+
+const navItems = ["records", "items", "about"];

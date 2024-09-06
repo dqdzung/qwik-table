@@ -1,48 +1,195 @@
-import { component$, useSignal, useTask$ } from "@builder.io/qwik";
-import Card from "~/components/card";
-import type { Table } from "..";
+import {
+  $,
+  component$,
+  type Signal,
+  useSignal,
+  useTask$,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 import { supabase } from "~/lib/db";
-import dayjs from "dayjs";
 import type { DocumentHead } from "@builder.io/qwik-city";
+import type { Item } from "~/types/item";
+import ItemModal, { ITEM_MODAL_ID } from "~/components/itemModal";
+import ConfirmModal from "~/components/confirmModal";
 
-const YESTERDAY = dayjs().subtract(1, "day");
-
-const fetchTables = async () => {
-  const { data: tables } = await supabase
-    .from("tables")
-    .select("id, code, date")
-    .eq("date", YESTERDAY.format("YYYY/MM/DD"));
-  return tables || [];
+const fetchItems = async (loading?: Signal<boolean>) => {
+  if (loading) {
+    loading.value = true;
+  }
+  const { data: items } = await supabase.from("items").select("*");
+  if (loading) {
+    loading.value = false;
+  }
+  return items || [];
 };
 
+export const tableHeaders = ["name", "code", "price"];
+export const DELETE_CONFIRM_MODAL_ID = "item-delete-confirm-modal";
+
 export default component$(() => {
-  const tables = useSignal<Table[]>([]);
+  const items = useSignal<Item[]>([]);
+  const loading = useSignal<boolean>(false);
+  const deleteId = useSignal<number>(0);
+  const editId = useSignal<number>(0);
 
   useTask$(async () => {
-    const res = await fetchTables();
-    tables.value = res;
+    const res = await fetchItems();
+    items.value = res;
+  });
+
+  const handleDelete = $(async () => {
+    if (!deleteId.value) return;
+    loading.value = true;
+    await supabase.from("items").delete().eq("id", deleteId.value);
+    loading.value = false;
+    deleteId.value = 0;
+  });
+
+  const handleEdit = $(async (id?: number) => {
+    if (!editId.value) return;
+    console.log("id", id);
+    // await supabase.from("items").delete().eq("id", id);
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ cleanup }) => {
+    const channel = supabase
+      .channel("table")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "items",
+        },
+        async (payload) => {
+          let signal;
+          if (payload.eventType !== "DELETE") {
+            signal = loading;
+          }
+          const res = await fetchItems(signal);
+          items.value = res;
+        },
+      )
+      .subscribe();
+    cleanup(() => {
+      supabase.removeChannel(channel);
+    });
   });
 
   return (
-    <div class="flex flex-col gap-4">
-      <h1 class="p-0">Yesterday - {YESTERDAY.format("DD/MM/YYYY")}</h1>
-      <div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        {tables.value.map(({ id, code }) => (
-          <Card key={id}>
-            <a href={`/tables/${code}`}>{code}</a>
-          </Card>
-        ))}
-      </div>
+    <div class="relative overflow-x-auto">
+      <button
+        data-modal-target={ITEM_MODAL_ID}
+        data-modal-toggle={ITEM_MODAL_ID}
+        class="focus:outline-non mb-2 inline-flex items-center justify-center bg-blue-700 px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+      >
+        <svg
+          class="-ms-1 me-1 h-5 w-5"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+            clip-rule="evenodd"
+          ></path>
+        </svg>
+        Add
+      </button>
+      <table class="w-full text-left text-sm text-white">
+        <thead class="bg-gray-50 text-xs uppercase text-gray-700 dark:bg-gray-700 dark:text-gray-400">
+          <tr>
+            {tableHeaders.map((header) => (
+              <th key={header} scope="col" class="px-6 py-3">
+                {header}
+              </th>
+            ))}
+            <th scope="col" class="flex justify-center px-6 py-3">
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.value.map((item) => (
+            <tr
+              class="border-b bg-white dark:border-gray-700 dark:bg-gray-800"
+              key={item.id}
+            >
+              <td class="px-6 py-4">
+                <input
+                  type="text"
+                  value={item.name}
+                  class="focus:ring-primary-600 focus:border-primary-600 dark:focus:ring-primary-500 dark:focus:border-primary-500 block rounded-lg border border-gray-300 bg-gray-50 p-2 text-sm text-gray-900 dark:border-gray-500 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
+                />
+              </td>
+              <td class="px-6 py-4">{item.code}</td>
+              <td class="px-6 py-4">{item.price}</td>
+              <td class="px-6 py-4 text-center">
+                <button
+                  type="button"
+                  class="hover:text-red me-2 inline-flex items-center text-center text-sm font-medium focus:outline-none"
+                  onClick$={() => handleEdit(item.id)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="lucide lucide-pencil h-5 w-5 text-white hover:text-blue-600"
+                  >
+                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="hover:text-red me-2 inline-flex items-center text-center text-sm font-medium focus:outline-none"
+                  data-modal-target={DELETE_CONFIRM_MODAL_ID}
+                  data-modal-toggle={DELETE_CONFIRM_MODAL_ID}
+                  onClick$={() => {
+                    deleteId.value = item.id || 0;
+                  }}
+                >
+                  <svg
+                    class="h-5 w-5 text-white hover:text-red-600"
+                    aria-hidden="true"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 7h14m-9 3v8m4-8v8M10 3h4a1 1 0 0 1 1 1v3H9V4a1 1 0 0 1 1-1ZM6 7h12v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7Z"
+                    />
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <ItemModal />
+      <ConfirmModal
+        modalId={DELETE_CONFIRM_MODAL_ID}
+        handleConfirm={handleDelete}
+      />
     </div>
   );
 });
 
 export const head: DocumentHead = {
-  title: "Records",
+  title: "Items",
   meta: [
     {
-      name: "Records page",
-      content: "Records page description",
+      name: "Items page",
+      content: "Items page description",
     },
   ],
 };

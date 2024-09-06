@@ -1,11 +1,9 @@
 import { component$, useSignal, useTask$ } from "@builder.io/qwik";
 import Card from "~/components/card";
-import type { Table } from "..";
 import { supabase } from "~/lib/db";
-import dayjs from "dayjs";
 import type { DocumentHead } from "@builder.io/qwik-city";
-
-const YESTERDAY = dayjs().subtract(1, "day");
+import type { Table } from "~/types/table";
+import { YESTERDAY } from "~/lib/helper";
 
 const fetchTables = async () => {
   const { data: tables } = await supabase
