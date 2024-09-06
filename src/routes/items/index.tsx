@@ -147,8 +147,6 @@ export default component$(() => {
                 <button
                   type="button"
                   class="hover:text-red me-2 inline-flex items-center text-center text-sm font-medium focus:outline-none"
-                  data-modal-target={DELETE_CONFIRM_MODAL_ID}
-                  data-modal-toggle={DELETE_CONFIRM_MODAL_ID}
                   onClick$={() => {
                     deleteId.value = item.id || 0;
                   }}
@@ -178,8 +176,11 @@ export default component$(() => {
       <ItemModal />
       {deleteId.value > 0 && (
         <ConfirmModal
-          modalId={DELETE_CONFIRM_MODAL_ID}
           handleConfirm={handleDelete}
+          handleClose={$(() => {
+            deleteId.value = 0;
+          })}
+          loading={loading.value}
         />
       )}
     </div>

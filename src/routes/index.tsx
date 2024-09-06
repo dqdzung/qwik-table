@@ -8,6 +8,7 @@ import {
 } from "@builder.io/qwik";
 import { type DocumentHead } from "@builder.io/qwik-city";
 import Card from "~/components/card";
+import ConfirmModal from "~/components/confirmModal";
 import LoadingIndicator from "~/components/loadingIndicator";
 import { supabase } from "~/lib/db";
 import { TODAY } from "~/lib/helper";
@@ -30,6 +31,8 @@ const fetchTables = async (loading?: Signal<boolean>) => {
 export default component$(() => {
   const tables = useSignal<Table[]>([]);
   const loading = useSignal<boolean>(false);
+  const deleting = useSignal<boolean>(false);
+  const deleteCode = useSignal<number>(0);
 
   const handleAdd = $(async () => {
     let id = genId();
@@ -44,8 +47,12 @@ export default component$(() => {
     await supabase.from("tables").insert(newTable);
   });
 
-  const handleDelete = $(async (code: number) => {
-    await supabase.from("tables").delete().eq("code", code);
+  const handleDelete = $(async () => {
+    if (deleteCode.value === 0) return;
+    deleting.value = true;
+    await supabase.from("tables").delete().eq("code", deleteCode.value);
+    deleteCode.value = 0;
+    deleting.value = false;
   });
 
   useTask$(async () => {
@@ -110,7 +117,12 @@ export default component$(() => {
           </button>
         </Card>
         {tables.value.map(({ id, code }) => (
-          <Card key={id} handleDelete={$(() => handleDelete(code))}>
+          <Card
+            key={id}
+            handleDelete={$(() => {
+              deleteCode.value = code;
+            })}
+          >
             <a href={`/tables/${code}`}>{code}</a>
           </Card>
         ))}
@@ -121,6 +133,16 @@ export default component$(() => {
           </Card>
         )}
       </div>
+
+      {deleteCode.value > 0 && (
+        <ConfirmModal
+          handleConfirm={handleDelete}
+          handleClose={$(() => {
+            deleteCode.value = 0;
+          })}
+          loading={deleting.value}
+        />
+      )}
     </div>
   );
 });
