@@ -89,7 +89,7 @@ export default component$(() => {
   return (
     <div class="flex flex-col gap-4">
       <h1>Today - {TODAY.format("DD/MM/YYYY")}</h1>
-      <div class="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <Card>
           <button
             type="button"
@@ -123,7 +123,7 @@ export default component$(() => {
               deleteCode.value = code;
             })}
           >
-            <a href={`/tables/${code}`}>{code}</a>
+            <a href={`/table/${code}`}>{code}</a>
           </Card>
         ))}
 

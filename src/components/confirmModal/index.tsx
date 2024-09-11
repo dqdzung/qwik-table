@@ -12,8 +12,8 @@ export default component$(
     loading?: boolean;
   }) => {
     return (
-      <div class="fixed left-0 right-0 top-0 z-50 h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900 bg-opacity-70 md:inset-0">
-        <div class="w-fullp-4 relative max-h-full">
+      <div class="fixed left-0 right-0 top-0 z-50 h-[100%] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900 bg-opacity-70 backdrop-blur-sm md:inset-0">
+        <div class="relative max-h-full w-full">
           <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
             <button
               type="button"
@@ -40,7 +40,7 @@ export default component$(
             <div class="p-4 text-center md:p-5">
               {!loading ? (
                 <svg
-                  class="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-200"
+                  class="mx-auto mb-4 h-8 w-8 text-gray-400 dark:text-gray-200"
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"

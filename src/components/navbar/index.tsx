@@ -9,7 +9,7 @@ export default component$(() => {
   };
 
   return (
-    <nav class="fixed start-0 top-0 z-20 w-full border-b border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-900">
+    <nav class="fixed start-0 top-0 z-20 w-full bg-white dark:border-gray-600 dark:bg-gray-800">
       <div class="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-4">
         <a href="/" class="flex items-center space-x-3 rtl:space-x-reverse">
           <span class="self-center whitespace-nowrap text-2xl font-semibold dark:text-white">
@@ -46,7 +46,7 @@ export default component$(() => {
           class="hidden w-full items-center justify-between md:flex md:w-auto"
           id="navbar-sticky"
         >
-          <ul class="mt-4 flex flex-col rounded-lg border border-gray-100 bg-gray-50 p-4 font-medium rtl:space-x-reverse dark:border-gray-700 dark:bg-gray-800 md:mt-0 md:flex-row md:space-x-8 md:border-0 md:bg-white md:p-0 md:dark:bg-gray-900">
+          <ul class="mt-4 flex flex-col rounded-lg border border-gray-100 bg-gray-50 p-4 font-medium rtl:space-x-reverse dark:border-gray-700 dark:bg-gray-900 md:mt-0 md:flex-row md:space-x-8 md:border-0 md:p-0 md:dark:bg-inherit">
             {navItems.map((item) => (
               <li key={item}>
                 <a

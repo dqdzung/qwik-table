@@ -1,6 +1,14 @@
-import { $, component$, useSignal, useStore } from "@builder.io/qwik";
+import {
+  $,
+  type Signal,
+  component$,
+  useSignal,
+  useStore,
+  useTask$,
+  useVisibleTask$,
+} from "@builder.io/qwik";
 import { supabase } from "~/lib/db";
-import type { Item } from "~/types/item";
+import type { Category, Item } from "~/types/item";
 
 export const ITEM_MODAL_ID = "item-modal";
 
@@ -8,19 +16,33 @@ const DEFAULT_VALUE = {
   name: "",
   code: "",
   price: 0,
+  categoryId: 0,
 };
 
-export default component$(() => {
+const fetchCategory = async () => {
+  const { data } = await supabase.from("categories").select("*");
+  return data || [];
+};
+
+export default component$(({ data }: { data: Signal<Item | null> }) => {
   const formValue = useStore<{
     name: string;
     code: string;
     price: number;
+    categoryId: number;
   }>(DEFAULT_VALUE);
   const loading = useSignal(false);
+  const error = useSignal("");
   const closeBtnRef = useSignal<HTMLButtonElement>();
+  const categories = useSignal<Category[]>([]);
 
   const clearForm = $(() => {
     Object.assign(formValue, DEFAULT_VALUE);
+  });
+
+  const handleClose = $(() => {
+    clearForm();
+    closeBtnRef.value?.click();
   });
 
   const handleSubmit = $(async () => {
@@ -28,31 +50,83 @@ export default component$(() => {
     const newItem: Item = {
       ...formValue,
     };
-    await supabase.from("items").insert(newItem);
-    loading.value = false;
-    clearForm();
-    if (closeBtnRef.value) {
-      closeBtnRef.value.click();
+
+    Object.hasOwn(newItem, "categories") && delete newItem.categories;
+
+    if (data.value) {
+      await supabase.from("items").update(newItem).eq("id", data.value.id);
+      handleClose();
+    } else {
+      const res = await supabase.from("items").insert(newItem);
+      if (res.error) {
+        error.value = "Code already exists!";
+      } else handleClose();
     }
+    loading.value = false;
+  });
+
+  // eslint-disable-next-line qwik/no-use-visible-task
+  useVisibleTask$(({ track }) => {
+    track(() => data.value);
+    Object.assign(formValue, data.value ? data.value : DEFAULT_VALUE);
+    if (data.value && error.value) error.value = "";
+  });
+
+  useTask$(({ track }) => {
+    track(() => error.value);
+    if (error.value) setTimeout(() => (error.value = ""), 3000);
+  });
+
+  useTask$(async () => {
+    categories.value = await fetchCategory();
   });
 
   return (
     <div
       id={ITEM_MODAL_ID}
       aria-hidden="true"
-      class="fixed left-0 right-0 top-0 z-50 hidden h-[calc(100%-1rem)] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden md:inset-0"
+      class="fixed left-0 right-0 top-0 z-50 hidden h-[100%] max-h-full w-full items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900 bg-opacity-70 backdrop-blur-sm md:inset-0"
+      data-modal-backdrop="static"
     >
+      {/* Backdrop */}
       <div class="relative max-h-full w-full max-w-md p-4">
+        {/* Modal */}
         <div class="relative rounded-lg bg-white shadow dark:bg-gray-700">
+          {/* Error */}
+          {error.value && (
+            <div
+              class="absolute top-[-70px] flex w-full items-center rounded-lg bg-white p-4 text-gray-500 shadow dark:bg-gray-800 dark:text-gray-400"
+              role="alert"
+            >
+              <div class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200">
+                <svg
+                  class="h-5 w-5"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 11.793a1 1 0 1 1-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 0 1-1.414-1.414L8.586 10 6.293 7.707a1 1 0 0 1 1.414-1.414L10 8.586l2.293-2.293a1 1 0 0 1 1.414 1.414L11.414 10l2.293 2.293Z" />
+                </svg>
+                <span class="sr-only">Error icon</span>
+              </div>
+              <div class="ms-3 text-sm font-normal">{error.value}</div>
+            </div>
+          )}
+
           <div class="flex items-center justify-between rounded-t border-b p-4 dark:border-gray-600 md:p-5">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-              Add New Item
+              {!data.value ? "Add New Item" : `Update ${data.value.name}`}
             </h3>
+
             <button
               type="button"
               class="ms-auto inline-flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-sm text-gray-400 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-600 dark:hover:text-white"
               data-modal-toggle={ITEM_MODAL_ID}
               ref={closeBtnRef}
+              onClick$={$(() => {
+                data.value = null;
+              })}
             >
               <svg
                 class="h-3 w-3"
@@ -82,7 +156,7 @@ export default component$(() => {
               <div class="col-span-2">
                 <label
                   for="name"
-                  class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                  class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
                 >
                   Name
                 </label>
@@ -90,7 +164,7 @@ export default component$(() => {
                   type="text"
                   name="name"
                   id="name"
-                  class="focus:ring-primary-600 focus:border-primary-600 dark:focus:ring-primary-500 dark:focus:border-primary-500 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 dark:border-gray-500 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
+                  class="block w-full rounded-lg border border-none bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-none dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
                   placeholder="Type product name"
                   required={true}
                   disabled={loading.value}
@@ -101,10 +175,40 @@ export default component$(() => {
                   }}
                 />
               </div>
+              <div class="col-span-2">
+                <label
+                  for="category"
+                  class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
+                >
+                  Category
+                </label>
+                <select
+                  id="category"
+                  class="block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+                  value={formValue.categoryId}
+                  onChange$={(event: any) => {
+                    if (!event.target) return;
+                    formValue.categoryId = event.target?.value;
+                  }}
+                >
+                  <option selected={!formValue.categoryId} disabled>
+                    Choose a category
+                  </option>
+                  {categories.value.map((category) => (
+                    <option
+                      key={category.id}
+                      value={category.id}
+                      class="text-white"
+                    >
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div class="col-span-2 sm:col-span-1">
                 <label
                   for="category"
-                  class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                  class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
                 >
                   Code
                 </label>
@@ -112,7 +216,7 @@ export default component$(() => {
                   type="text"
                   name="code"
                   id="code"
-                  class="focus:ring-primary-600 focus:border-primary-600 dark:focus:ring-primary-500 dark:focus:border-primary-500 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 dark:border-gray-500 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
+                  class="block w-full rounded-lg border border-none bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-none dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
                   placeholder="Type product code"
                   required={true}
                   value={formValue.code}
@@ -126,7 +230,7 @@ export default component$(() => {
               <div class="col-span-2 sm:col-span-1">
                 <label
                   for="price"
-                  class="mb-2 block text-sm font-medium text-gray-900 dark:text-white"
+                  class="mb-1 block text-sm font-medium text-gray-900 dark:text-white"
                 >
                   Price
                 </label>
@@ -134,7 +238,7 @@ export default component$(() => {
                   type="number"
                   name="price"
                   id="price"
-                  class="focus:ring-primary-600 focus:border-primary-600 dark:focus:ring-primary-500 dark:focus:border-primary-500 block w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 dark:border-gray-500 dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
+                  class="block w-full rounded-lg border border-none bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-none dark:bg-gray-600 dark:text-white dark:placeholder-gray-400"
                   placeholder="x1000 VND"
                   required={true}
                   value={formValue.price}
@@ -164,12 +268,12 @@ export default component$(() => {
                       clip-rule="evenodd"
                     ></path>
                   </svg>
-                  Add
+                  {!data.value ? "Add" : "Edit"}
                 </>
               ) : (
                 <svg
                   aria-hidden="true"
-                  class="h-5 w-5 animate-spin fill-blue-600 text-gray-200 dark:text-gray-600"
+                  class="h-5 w-5 animate-spin fill-blue-600 text-gray-200"
                   viewBox="0 0 100 101"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
